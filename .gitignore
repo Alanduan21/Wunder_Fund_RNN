@@ -1,1 +1,12 @@
+# ignore initial dataset
 competition_package/datasets/train.parquet
+
+# ignore virtual env dependency files
+
+venv/
+.venv/
+env/
+.env/
+
+__pycache__/
+*.pyc
