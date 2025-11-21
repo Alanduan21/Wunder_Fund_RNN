@@ -10,3 +10,8 @@ env/
 
 __pycache__/
 *.pyc
+
+# Virtual environment (your venv is inside source/)
+source/Lib/
+source/Scripts/
+source/pyvenv.cfg
