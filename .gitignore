@@ -15,3 +15,7 @@ __pycache__/
 source/Lib/
 source/Scripts/
 source/pyvenv.cfg
+
+*.pt
+*.pth
+*.ckpt
