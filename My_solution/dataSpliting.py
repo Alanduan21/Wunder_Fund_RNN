@@ -5,7 +5,7 @@ import torch
 SEQ_LEN = 50  # Example sequence length
 
 
-df = pd.read_parquet("competition_package/datasets/train.parquet")
+df = pd.read_parquet("../competition_package/datasets/train.parquet")
 
 ### Split data into train and validation sets
 
