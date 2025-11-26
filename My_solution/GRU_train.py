@@ -6,10 +6,11 @@ from torch.utils.data import TensorDataset, DataLoader
 # Model class
 
 class GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=64, num_layers=2):
+    def __init__(self, input_size, hidden_size=128, num_layers=3, dropout=0.2):
         super().__init__()
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
-                          num_layers=num_layers, batch_first=True)
+                          num_layers=num_layers, batch_first=True, dropout=dropout)
+        self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
@@ -36,9 +37,9 @@ if __name__=="__main__":
 
     # Initialize model, loss, optimizer
     print("\n=== Initializing Model ===")
-    model = GRUModel(input_size=train_X.shape[2], hidden_size=64, num_layers=2)
+    model = GRUModel(input_size=train_X.shape[2], hidden_size=128, num_layers=3, dropout=0.2)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 
     print(f"Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
 
