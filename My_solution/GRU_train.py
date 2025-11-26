@@ -6,7 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 # Model class
 
 class GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=128, num_layers=3, dropout=0.2):
+    def __init__(self, input_size, hidden_size=256, num_layers=3, dropout=0.3):
         super().__init__()
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
                           num_layers=num_layers, batch_first=True, dropout=dropout)
@@ -15,7 +15,7 @@ class GRUModel(nn.Module):
 
     def forward(self, x):
         out, _ = self.gru(x)
-        return self.fc(out[:, -1, :])
+        return self.fc(self.dropout(out[:, -1, :]))
 
 if __name__=="__main__":
     # training codes, put this here so validation code doesn't train again
