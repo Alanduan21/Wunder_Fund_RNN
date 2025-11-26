@@ -36,7 +36,8 @@ def make_sequences(data):
 
     X = np.lib.stride_tricks.sliding_window_view(arr, SEQ_LEN, axis=0)
     X = X[:num_sequences].copy()
-
+    ## transpose to (num_sequences, SEQ_LEN, num_features)
+    X = X.transpose(0, 2, 1)
     y = arr[SEQ_LEN:, 0].copy()   # column 0 must be target
     
     return torch.from_numpy(X), torch.from_numpy(y)
