@@ -19,7 +19,7 @@ class GRUModel(nn.Module):
 if __name__=="__main__":
     # training codes
     # Load data
-    train_X, train_y = torch.load("train.pt")
+    train_X, train_y = torch.load("train.pt", map_location="cpu")
     train_ds = TensorDataset(train_X, train_y)
     train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
 

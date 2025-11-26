@@ -3,12 +3,12 @@ import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 
 # Load data
-val_X, val_y = torch.load("val.pt")
+val_X, val_y = torch.load("val.pt", map_location="cpu")
 
 # Load model
 from GRU_model import GRUModel  # or copy the class here
 model = GRUModel(input_size=val_X.shape[2], hidden_size=64, num_layers=2)
-model.load_state_dict(torch.load("gru_model.pth"))
+model.load_state_dict(torch.load("gru_model.pth", map_location="cpu", weights_only=True))
 model.eval()
 
 # load validation data
