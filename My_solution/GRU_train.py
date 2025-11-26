@@ -12,10 +12,17 @@ class GRUModel(nn.Module):
                           num_layers=num_layers, batch_first=True, dropout=dropout)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_size, 1)
+        self.fc1 = nn.Linear(hidden_size, 64)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
-        out, _ = self.gru(x)
-        return self.fc(self.dropout(out[:, -1, :]))
+        out, _ = self.gru(x)          # (batch, seq, hidden)
+        x = out[:, -1, :]             # take last time step
+        x = self.dropout(x)           # apply dropout feature-wise
+        x = self.relu(self.fc1(x))    # FC → ReLU
+        x = self.fc2(x)               # FC → 1 output
+        return x.squeeze(-1)
 
 if __name__=="__main__":
     # training codes, put this here so validation code doesn't train again
@@ -25,6 +32,8 @@ if __name__=="__main__":
     print(f"Training samples: {train_X.shape[0]}")
     print(f"Validation samples: {val_X.shape[0]}")
     print(f"Input features: {train_X.shape[2]}")
+
+    
 
 
     train_ds = TensorDataset(train_X, train_y)
