@@ -8,7 +8,7 @@ class PredictionModel:
         # Initialize your model, load weights, etc.
         
         # Load scaler
-        scaler = torch.load("scaler.pt", map_location="cpu")
+        scaler = torch.load("scaler.pt", map_location="cpu",weights_only=False)
         self.mean = scaler["mean"].values.astype(np.float32)
         self.std = scaler["std"].values.astype(np.float32)
 
@@ -16,7 +16,8 @@ class PredictionModel:
         
         input_size = len(self.mean)  # should be 35
         self.model = GRUModel(input_size=input_size, hidden_size=64, num_layers=2)
-        self.model.load_state_dict(torch.load("gru_model.pth", map_location="cpu", weights_only=True))
+        state_dict = torch.load("gru_model.pth", map_location="cpu", weights_only=False)
+        self.model.load_state_dict(state_dict)
         self.model.eval()
 
         # Sequence buffer per seq_ix
