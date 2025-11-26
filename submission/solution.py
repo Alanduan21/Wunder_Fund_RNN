@@ -82,11 +82,11 @@ class PredictionModel:
         return prediction
 
 
-if __name__ == "__main__":
-    # Quick test
-    model = PredictionModel()
+# if __name__ == "__main__":
+#     # Quick test
+#     model = PredictionModel()
 
-    from utils import DataPoint
-    dummy_state = np.random.rand(32).astype(np.float32)  # simulate 32 features
-    dp = DataPoint(seq_ix=0, step_in_seq=0, need_prediction=True, state=dummy_state)
-    print(model.predict(dp))
+#     from utils import DataPoint
+#     dummy_state = np.random.rand(32).astype(np.float32)  # simulate 32 features
+#     dp = DataPoint(seq_ix=0, step_in_seq=0, need_prediction=True, state=dummy_state)
+#     print(model.predict(dp))
