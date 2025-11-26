@@ -12,6 +12,11 @@ class PredictionModel:
         self.mean = scaler["mean"].values.astype(np.float32)
         self.std = scaler["std"].values.astype(np.float32)
 
+        
+        # Debug: check scaler dimensions
+        print(f"[DEBUG] Scaler mean length: {len(self.mean)}, std length: {len(self.std)}")
+
+
         # Load model
         
         input_size = len(self.mean)  # should be 35
@@ -26,16 +31,22 @@ class PredictionModel:
 
 
     def normalize(self, state: np.ndarray) -> np.ndarray:
+
+        # Debug: check state shape
+        print(f"[DEBUG] Incoming state shape: {state.shape}")
+        # Pad if state is shorter than scaler length
+        if state.shape[0] < len(self.mean):
+            pad_len = len(self.mean) - state.shape[0]
+            print(f"[DEBUG] Padding state with {pad_len} zeros")
+            state = np.pad(state, (0, pad_len), mode="constant")
         return (state - self.mean) / self.std
+
 
     def denormalize_target(self, value: float) -> float:
         return value * self.std[0] + self.mean[0]
 
     def predict(self, data_point: DataPoint) -> np.ndarray | None:
-        # This is where your prediction logic goes.
-
-
-
+    
         if not data_point.need_prediction:
             return None
         
@@ -60,8 +71,12 @@ class PredictionModel:
         with torch.no_grad():
             out = self.model(seq_tensor).item()  # scalar prediction
 
+
         # Build full prediction vector
-        prediction = np.copy(data_point.state)  # start from last known state
-        prediction[0] = self.denormalize_target(out)  # replace target feature
+        prediction = np.copy(data_point.state)
+        if prediction.shape[0] < len(self.mean):
+            prediction = np.pad(prediction, (0, len(self.mean) - prediction.shape[0]), mode="constant")
+        prediction[0] = self.denormalize_target(out)
+
 
         return prediction
