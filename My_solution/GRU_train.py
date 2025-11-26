@@ -37,9 +37,9 @@ if __name__=="__main__":
 
     # Initialize model, loss, optimizer
     print("\n=== Initializing Model ===")
-    model = GRUModel(input_size=train_X.shape[2], hidden_size=128, num_layers=3, dropout=0.2)
+    model = GRUModel(input_size=train_X.shape[2], hidden_size=256, num_layers=3, dropout=0.3)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-5)
 
     print(f"Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
 
