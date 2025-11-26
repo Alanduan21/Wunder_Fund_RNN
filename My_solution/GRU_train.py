@@ -33,7 +33,26 @@ if __name__=="__main__":
     print(f"Validation samples: {val_X.shape[0]}")
     print(f"Input features: {train_X.shape[2]}")
 
-    
+  # === Normalize X (per feature) ===
+    mean_X = train_X.mean(dim=(0,1), keepdim=True)
+    std_X  = train_X.std(dim=(0,1), keepdim=True)
+    train_X = (train_X - mean_X) / (std_X + 1e-8)
+    val_X   = (val_X   - mean_X) / (std_X + 1e-8)
+
+    # === Normalize y (scalar target, 1 value) ===
+    mean_y = train_y.mean()
+    std_y  = train_y.std()
+    train_y = (train_y - mean_y) / (std_y + 1e-8)
+    val_y   = (val_y   - mean_y) / (std_y + 1e-8)
+
+    # === Save stats for validation/inference ===
+    torch.save({
+        "mean_X": mean_X,
+        "std_X": std_X,
+        "mean_y": mean_y,
+        "std_y": std_y
+    }, "scaling_stats.pth")
+
 
 
     train_ds = TensorDataset(train_X, train_y)
