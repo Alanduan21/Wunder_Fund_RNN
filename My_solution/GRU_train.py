@@ -9,9 +9,8 @@ class GRUModel(nn.Module):
     def __init__(self, input_size, hidden_size=256, num_layers=3, dropout=0.3):
         super().__init__()
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
-                          num_layers=num_layers, batch_first=True, dropout=dropout)
+                          num_layers=num_layers, batch_first=True, dropout=dropout if num_layers > 1 else 0)
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(hidden_size, 1)
         self.fc1 = nn.Linear(hidden_size, 64)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(64, 1)
@@ -27,39 +26,22 @@ class GRUModel(nn.Module):
 if __name__=="__main__":
     # training codes, put this here so validation code doesn't train again
     # Load data
+    print("=== Loading Training Data ===")
     train_X, train_y = torch.load("train.pt")
     val_X, val_y = torch.load("val.pt")
     print(f"Training samples: {train_X.shape[0]}")
     print(f"Validation samples: {val_X.shape[0]}")
     print(f"Input features: {train_X.shape[2]}")
 
-  # === Normalize X (per feature) ===
-    mean_X = train_X.mean(dim=(0,1), keepdim=True)
-    std_X  = train_X.std(dim=(0,1), keepdim=True)
-    train_X = (train_X - mean_X) / (std_X + 1e-8)
-    val_X   = (val_X   - mean_X) / (std_X + 1e-8)
+    # load normalized data
+    scaler = torch.load("scaler.pt")
+    print(f"Input features: {len(scaler['mean'])} features")
+    
 
-    # === Normalize y (scalar target, 1 value) ===
-    mean_y = train_y.mean()
-    std_y  = train_y.std()
-    train_y = (train_y - mean_y) / (std_y + 1e-8)
-    val_y   = (val_y   - mean_y) / (std_y + 1e-8)
-
-    # === Save stats for validation/inference ===
-    torch.save({
-        "mean_X": mean_X,
-        "std_X": std_X,
-        "mean_y": mean_y,
-        "std_y": std_y
-    }, "scaling_stats.pth")
-
-
-
+    # Create DataLoaders
     train_ds = TensorDataset(train_X, train_y)
     val_ds = TensorDataset(val_X, val_y)
     train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-
-    ### remember no shuffle for validation
     val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
 
 
@@ -75,7 +57,9 @@ if __name__=="__main__":
     print("\n=== Training begins... ===")
     # Training loop with validation
     best_val_loss = float('inf')
-    epochs = 10  
+    epochs = 20
+    patience = 5
+    epochs_no_improve = 0
     # Training loop
     for epoch in range(epochs): 
         model.train()
@@ -111,6 +95,12 @@ if __name__=="__main__":
             best_val_loss = val_loss
             torch.save(model.state_dict(), "gru_model.pth")
             print(f"  → Best model saved (val_loss: {val_loss:.6f})")
+        else:
+            epochs_no_improve += 1
+            print(f"  → No improvement for {epochs_no_improve} epoch(s)")
+            if epochs_no_improve >= patience:
+                print("Early stopping triggered")
+                break
 
 print("\n=== Training Complete ===")
 print(f"Best validation loss: {best_val_loss:.6f}")
