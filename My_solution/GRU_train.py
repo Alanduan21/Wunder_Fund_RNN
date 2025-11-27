@@ -34,7 +34,7 @@ if __name__=="__main__":
     print(f"Input features: {train_X.shape[2]}")
 
     # load normalized data
-    scaler = torch.load("scaler.pt")
+    scaler = torch.load("scaler.pt",weights_only=False)
     print(f"Input features: {len(scaler['mean'])} features")
     
 
