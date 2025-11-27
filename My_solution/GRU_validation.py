@@ -8,12 +8,12 @@ device = torch.device("cpu")
 
 print("=== Loading Validation Data ===")
 # Load data (already normalized from dataSplit.py)
-val_X, val_y = torch.load("val.pt", map_location=device)
+val_X, val_y = torch.load("val.pt", map_location=device, weights_only=False)
 print(f"Validation samples: {val_X.shape[0]}")
 print(f"Input features: {val_X.shape[2]}")
 
 # Load scaler for denormalization
-scaler = torch.load("scaler.pt", map_location=device)
+scaler = torch.load("scaler.pt", map_location=device, weights_only=False)
 mean_y = scaler["mean"].values[0]  # Target is first feature
 std_y = scaler["std"].values[0]
 
@@ -26,7 +26,7 @@ val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
 # Load model
 from GRU_model import GRUModel  # Import from training file
 model = GRUModel(input_size=val_X.shape[2], hidden_size=256, num_layers=3, dropout=0.3)
-model.load_state_dict(torch.load("gru_model.pth", map_location=device))
+model.load_state_dict(torch.load("gru_model.pth", map_location=device, weights_only=False))
 model.to(device)
 model.eval()
 print("Model loaded successfully")
