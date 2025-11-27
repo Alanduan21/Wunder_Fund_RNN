@@ -6,14 +6,14 @@ from torch.utils.data import TensorDataset, DataLoader
 # Model class
 
 class GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=256, num_layers=3, dropout=0.3):
+    def __init__(self, input_size, hidden_size=512, num_layers=3, dropout=0.1):
         super().__init__()
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
                           num_layers=num_layers, batch_first=True, dropout=dropout if num_layers > 1 else 0)
         self.dropout = nn.Dropout(dropout)
-        self.fc1 = nn.Linear(hidden_size, 64)
+        self.fc1 = nn.Linear(hidden_size, 128)
         self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(64, 1)
+        self.fc2 = nn.Linear(128, 1)
 
     def forward(self, x):
         out, _ = self.gru(x)          # (batch, seq, hidden)

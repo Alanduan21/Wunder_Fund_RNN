@@ -6,14 +6,14 @@ from torch.utils.data import TensorDataset, DataLoader
 # Model class
 
 class GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=256, num_layers=3, dropout=0.3):
+    def __init__(self, input_size, hidden_size=512, num_layers=3, dropout=0.1):
         super().__init__()
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
                           num_layers=num_layers, batch_first=True, dropout=dropout if num_layers > 1 else 0)
         self.dropout = nn.Dropout(dropout)
-        self.fc1 = nn.Linear(hidden_size, 64)
+        self.fc1 = nn.Linear(hidden_size, 128)
         self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(64, 1)
+        self.fc2 = nn.Linear(128, 1)
 
     def forward(self, x):
         out, _ = self.gru(x)          # (batch, seq, hidden)
@@ -41,15 +41,15 @@ if __name__=="__main__":
     # Create DataLoaders
     train_ds = TensorDataset(train_X, train_y)
     val_ds = TensorDataset(val_X, val_y)
-    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=128, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=128, shuffle=False)
 
 
     # Initialize model, loss, optimizer
     print("\n=== Initializing Model ===")
-    model = GRUModel(input_size=train_X.shape[2], hidden_size=256, num_layers=3, dropout=0.3)
+    model = GRUModel(input_size=train_X.shape[2], hidden_size=512, num_layers=3, dropout=0.1)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0)
 
     print(f"Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
 
@@ -57,8 +57,8 @@ if __name__=="__main__":
     print("\n=== Training begins... ===")
     # Training loop with validation
     best_val_loss = float('inf')
-    epochs = 20
-    patience = 5
+    epochs = 50
+    patience = 10
     epochs_no_improve = 0
     # Training loop
     for epoch in range(epochs): 

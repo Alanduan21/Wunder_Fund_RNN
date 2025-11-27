@@ -21,11 +21,11 @@ print(f"Target mean: {mean_y:.6f}, std: {std_y:.6f}")
 
 # load validation data
 val_ds = TensorDataset(val_X, val_y)
-val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
+val_loader = DataLoader(val_ds, batch_size=128, shuffle=False)
 
 # Load model
 from GRU_model import GRUModel  # Import from training file
-model = GRUModel(input_size=val_X.shape[2], hidden_size=256, num_layers=3, dropout=0.3)
+model = GRUModel(input_size=val_X.shape[2], hidden_size=512, num_layers=3, dropout=0.1)
 model.load_state_dict(torch.load("gru_model.pth", map_location=device, weights_only=False))
 model.to(device)
 model.eval()
