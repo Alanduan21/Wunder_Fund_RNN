@@ -4,78 +4,80 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 
+device = torch.device("cpu")
+
 print("=== Loading Validation Data ===")
-# Load data
-val_X, val_y = torch.load("val.pt")
+# Load data (already normalized from dataSplit.py)
+val_X, val_y = torch.load("val.pt", map_location=device)
 print(f"Validation samples: {val_X.shape[0]}")
 print(f"Input features: {val_X.shape[2]}")
 
-# Load model
-from GRU_model import GRUModel  # Import from training file
-model = GRUModel(input_size=val_X.shape[2], hidden_size=256, num_layers=3, dropout=0.3)
-model.load_state_dict(torch.load("gru_model.pth"))
-model.eval()
-print("Model loaded successfully")
+# Load scaler for denormalization
+scaler = torch.load("scaler.pt", map_location=device)
+mean_y = scaler["mean"].values[0]  # Target is first feature
+std_y = scaler["std"].values[0]
+
+print(f"Target mean: {mean_y:.6f}, std: {std_y:.6f}")
 
 # load validation data
 val_ds = TensorDataset(val_X, val_y)
 val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
 
+# Load model
+from GRU_model import GRUModel  # Import from training file
+model = GRUModel(input_size=val_X.shape[2], hidden_size=256, num_layers=3, dropout=0.3)
+model.load_state_dict(torch.load("gru_model.pth", map_location=device))
+model.to(device)
+model.eval()
+print("Model loaded successfully")
+
 
 print("\n=== Running Validation ===")
-# Collect predictions
-preds, targets = [], []
+all_preds = []
+all_targets = []
 with torch.no_grad():
     for X_batch, y_batch in val_loader:
-        out = model(X_batch)
-        preds.append(out.squeeze().numpy())
-        targets.append(y_batch.numpy())
+        X_batch = X_batch.to(device)
+        out = model(X_batch)   # expected shape: (batch,) or (batch,1)
+        out = out.view(-1).cpu().numpy()
+        all_preds.append(out)
+        all_targets.append(y_batch.cpu().numpy().flatten())
 
-preds = np.concatenate(preds)
-targets = np.concatenate(targets)
+all_preds = np.concatenate(all_preds)
+all_targets = np.concatenate(all_targets)
 
-print(f"Predictions shape: {preds.shape}")
-print(f"Targets shape: {targets.shape}")
+# === Denormalize predictions and targets to original scale ===
+preds_denorm   = all_preds * std_y.item() + mean_y.item()
+targets_denorm = all_targets * std_y.item() + mean_y.item()
 
-# Compute comprehensive metrics
+# === Metrics ===
+mse  = mean_squared_error(targets_denorm, preds_denorm)
+rmse = np.sqrt(mse)
+mae  = mean_absolute_error(targets_denorm, preds_denorm)
+r2   = r2_score(targets_denorm, preds_denorm)
+
 print("\n=== Validation Metrics ===")
-
-# RMSE (what you had)
-rmse = np.sqrt(mean_squared_error(targets, preds))
 print(f"RMSE:  {rmse:.6f}")
-
-# MSE
-mse = mean_squared_error(targets, preds)
 print(f"MSE:   {mse:.6f}")
-
-# MAE
-mae = mean_absolute_error(targets, preds)
 print(f"MAE:   {mae:.6f}")
-
-# R² Score (what the challenge uses!)
-r2 = r2_score(targets, preds)
 print(f"R²:    {r2:.6f}")
 
-# Additional useful metrics
-residuals = targets - preds
-mean_residual = np.mean(residuals)
-std_residual = np.std(residuals)
+# Residuals and ranges
+residuals = targets_denorm - preds_denorm
+print(f"\nMean Residual: {residuals.mean():.6f}")
+print(f"Std Residual:  {residuals.std():.6f}")
 
-print(f"\nMean Residual: {mean_residual:.6f}")
-print(f"Std Residual:  {std_residual:.6f}")
+print("\n=== Prediction Statistics ===")
+print(f"Target range:     [{targets_denorm.min():.4f}, {targets_denorm.max():.4f}]")
+print(f"Prediction range: [{preds_denorm.min():.4f}, {preds_denorm.max():.4f}]")
 
-# Prediction range info
-print(f"\n=== Prediction Statistics ===")
-print(f"Target range:     [{targets.min():.4f}, {targets.max():.4f}]")
-print(f"Prediction range: [{preds.min():.4f}, {preds.max():.4f}]")
-
-# Sample predictions vs targets
-print(f"\n=== Sample Predictions (first 10) ===")
+print("\n=== Sample Predictions (first 10) ===")
 print("Target     | Prediction | Error")
 print("-" * 40)
-for i in range(min(10, len(targets))):
-    error = targets[i] - preds[i]
-    print(f"{targets[i]:9.4f} | {preds[i]:10.4f} | {error:6.4f}")
+for i in range(min(10, len(targets_denorm))):
+    t = targets_denorm[i]
+    p = preds_denorm[i]
+    print(f"{t:9.4f} | {p:10.4f} | {t-p:6.4f}")
 
 print("\n=== Validation Complete ===")
 print(f"Key metric (R²): {r2:.6f}")
