@@ -71,6 +71,10 @@ if __name__=="__main__":
             preds = model(X_batch)
             loss = criterion(preds.squeeze(), y_batch)
             loss.backward()
+
+            # Add gradient clipping for stability (good practice)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
             optimizer.step()
             train_loss += loss.item() * X_batch.size(0)
         train_loss /= len(train_ds)
