@@ -6,14 +6,14 @@ from torch.utils.data import TensorDataset, DataLoader
 # Model class
 
 class GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=512, num_layers=3, dropout=0.1):
+    def __init__(self, input_size, hidden_size=256, num_layers=3, dropout=0.2):
         super().__init__()
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
                           num_layers=num_layers, batch_first=True, dropout=dropout if num_layers > 1 else 0)
         self.dropout = nn.Dropout(dropout)
-        self.fc1 = nn.Linear(hidden_size, 128)
+        self.fc1 = nn.Linear(hidden_size, 64)
         self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 1)
+        self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
         out, _ = self.gru(x)          # (batch, seq, hidden)
@@ -47,9 +47,9 @@ if __name__=="__main__":
 
     # Initialize model, loss, optimizer
     print("\n=== Initializing Model ===")
-    model = GRUModel(input_size=train_X.shape[2], hidden_size=512, num_layers=3, dropout=0.1)
+    model = GRUModel(input_size=train_X.shape[2], hidden_size=256, num_layers=3, dropout=0.2)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-6)
 
     print(f"Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
 
@@ -57,8 +57,8 @@ if __name__=="__main__":
     print("\n=== Training begins... ===")
     # Training loop with validation
     best_val_loss = float('inf')
-    epochs = 50
-    patience = 10
+    epochs = 20
+    patience = 8
     epochs_no_improve = 0
     # Training loop
     for epoch in range(epochs): 
@@ -74,7 +74,7 @@ if __name__=="__main__":
 
             # Add gradient clipping for stability (good practice)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
+
             optimizer.step()
             train_loss += loss.item() * X_batch.size(0)
         train_loss /= len(train_ds)

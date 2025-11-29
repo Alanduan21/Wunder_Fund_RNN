@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-SEQ_LEN = 50  # Example sequence length
+SEQ_LEN = 100  # Example sequence length
 
 
 df = pd.read_parquet("../competition_package/datasets/train.parquet")
