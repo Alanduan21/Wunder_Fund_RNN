@@ -1,5 +1,5 @@
 import numpy as np
-from My_solution.utils import DataPoint
+from submission.utils import DataPoint
 import torch
 from GRU_model_submission import GRUModel
 
@@ -19,6 +19,7 @@ class PredictionModel:
         # Sequence buffer per seq_ix
         self.buffers = {}
         self.seq_len = 100
+        self.warmup_steps = 20
 
     def normalize(self, state: np.ndarray) -> np.ndarray:
         return (state - self.mean) / self.std
@@ -39,13 +40,19 @@ class PredictionModel:
         if len(self.buffers[seq_id]) > self.seq_len:
             self.buffers[seq_id] = self.buffers[seq_id][-self.seq_len:]
 
-        # FIX: Pad sequence if shorter than seq_len
+        # WARM-UP: Use simple baseline for first few predictions
+        if len(self.buffers[seq_id]) < self.warmup_steps:
+            # Return current state unchanged (predict no change)
+            return np.copy(data_point.state)
+
+        # After warm-up, use model with padding if needed
         current_buffer = self.buffers[seq_id]
         
         if len(current_buffer) < self.seq_len:
-            # Pad with zeros at the beginning
+            # Pad by repeating first observation
             padding_needed = self.seq_len - len(current_buffer)
-            padding = np.zeros((padding_needed, len(self.mean)), dtype=np.float32)
+            first_obs = current_buffer[0]
+            padding = np.tile(first_obs, (padding_needed, 1))
             seq_array = np.vstack([padding, np.array(current_buffer, dtype=np.float32)])
         else:
             seq_array = np.array(current_buffer, dtype=np.float32)

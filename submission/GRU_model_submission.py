@@ -24,3 +24,4 @@ class GRUModel(nn.Module):
         x = self.dropout(x)
         x = self.fc(x)
         return x.squeeze(-1)
+    
