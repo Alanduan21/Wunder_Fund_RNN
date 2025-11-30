@@ -43,12 +43,9 @@ with torch.no_grad():
         all_preds.append(out.cpu().numpy())
         all_targets.append(y_batch.cpu().numpy())
 
-all_preds = np.concatenate(all_preds)
-all_targets = np.concatenate(all_targets)
-
 # Concatenate all batches
-preds_norm   = all_preds * std_y.item() + mean_y.item()
-targets_norm = all_targets * std_y.item() + mean_y.item()
+preds_norm = np.concatenate(all_preds)     # Shape: (N, 32)
+targets_norm = np.concatenate(all_targets)  # Shape: (N, 32)
 print(f"Predictions shape: {preds_norm.shape}")
 print(f"Targets shape: {targets_norm.shape}")
 
