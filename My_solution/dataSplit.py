@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-SEQ_LEN = 100  # Example sequence length
+SEQ_LEN = 50  # Example sequence length
 
 
 df = pd.read_parquet("../competition_package/datasets/train.parquet")
@@ -15,7 +15,7 @@ print(f"Number of features: {df.shape[1]}")
 
 ### Split data into train and validation sets
 
-## 80% us train, 20% us validation
+## 80% train, 20% validation
 split_idx = int(len(df) * 0.8)
 train_df = df.iloc[:split_idx]
 val_df = df.iloc[split_idx:]
@@ -41,7 +41,7 @@ def make_sequences(data):
     X = X[:num_sequences].copy()
     ## transpose to (num_sequences, SEQ_LEN, num_features)
     X = X.transpose(0, 2, 1)
-    y = arr[SEQ_LEN:, 0].copy()   # column 0 must be target
+    y = arr[SEQ_LEN:, :].copy()   # column 0 must be target
     
     return torch.from_numpy(X), torch.from_numpy(y)
 

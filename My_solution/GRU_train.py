@@ -4,7 +4,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 # Lightweight model for CPU
 class GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=128, num_layers=2, dropout=0.2):
+    def __init__(self, input_size, output_size, hidden_size=128, num_layers=2, dropout=0.2):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_size, 
@@ -14,7 +14,7 @@ class GRUModel(nn.Module):
             dropout=dropout if num_layers > 1 else 0
         )
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(hidden_size, 1)
+        self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
         out, _ = self.gru(x)
@@ -32,29 +32,40 @@ if __name__ == "__main__":
     print(f"Validation samples: {val_X.shape[0]}")
     print(f"Sequence length: {train_X.shape[1]}")
     print(f"Input features: {train_X.shape[2]}")
+    print(f"Output features: {train_y.shape[1]}") 
 
     scaler = torch.load("scaler.pt", weights_only=False)
     
     # Create DataLoaders with LARGER batches for CPU efficiency
     train_ds = TensorDataset(train_X, train_y)
     val_ds = TensorDataset(val_X, val_y)
-    train_loader = DataLoader(train_ds, batch_size=512, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=512, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=256, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=256, shuffle=False)
 
-    print("\n=== Initializing LIGHTWEIGHT Model ===")
-    # MUCH SMALLER: 2 layers, 128 hidden (was 3 layers, 256 hidden)
-    model = GRUModel(input_size=train_X.shape[2], hidden_size=128, num_layers=2, dropout=0.2)
+
+    ###########################################################################
+    print("\n=== Initializing Model ===")
+    input_size = train_X.shape[2]  # 32
+    output_size = train_y.shape[1]  # 32
+
+    model = GRUModel(
+        input_size=input_size, 
+        output_size=output_size,
+        hidden_size=128, 
+        num_layers=2, 
+        dropout=0.2
+    )
+
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-6)
 
     print(f"Model has {sum(p.numel() for p in model.parameters()):,} parameters")
-    print("⚡ FAST CPU Config: hidden=128, layers=2, batch=512")
-    print("(Will train ~3-4x faster than your previous setup)")
+    print(f"Config: input={input_size}, output={output_size}, hidden=128, layers=2")
 
     print("\n=== Training Begins ===")
     best_val_loss = float('inf')
     epochs = 20
-    patience = 3
+    patience = 5
     epochs_no_improve = 0
     
     import time
@@ -111,3 +122,4 @@ if __name__ == "__main__":
 
     print("\n=== Training Complete ===")
     print(f"Best validation loss: {best_val_loss:.6f}")
+    print("Model saved to gru_model.pth")

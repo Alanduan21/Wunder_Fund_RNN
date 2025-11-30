@@ -7,7 +7,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Add project root folder to path for importing utils
 sys.path.append(f"{CURRENT_DIR}/../..")
 
-from submission.utils import DataPoint, ScorerStepByStep
+from My_solution.utils import DataPoint, ScorerStepByStep
 
 
 class PredictionModel:

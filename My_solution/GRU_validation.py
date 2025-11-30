@@ -11,21 +11,22 @@ print("=== Loading Validation Data ===")
 val_X, val_y = torch.load("val.pt", map_location=device, weights_only=False)
 print(f"Validation samples: {val_X.shape[0]}")
 print(f"Input features: {val_X.shape[2]}")
+print(f"Output features: {val_y.shape[1]}")
 
 # Load scaler for denormalization
 scaler = torch.load("scaler.pt", map_location=device, weights_only=False)
-mean_y = scaler["mean"].values[0]  # Target is first feature
-std_y = scaler["std"].values[0]
+mean_vals = scaler["mean"].values.astype(np.float32)
+std_vals = scaler["std"].values.astype(np.float32)
 
-print(f"Target mean: {mean_y:.6f}, std: {std_y:.6f}")
+print(f"Target mean: {mean_vals[0]:.6f}, std: {std_vals[0]:.6f}")
 
 # load validation data
 val_ds = TensorDataset(val_X, val_y)
-val_loader = DataLoader(val_ds, batch_size=128, shuffle=False)
+val_loader = DataLoader(val_ds, batch_size=256, shuffle=False)
 
 # Load model
 from GRU_model import GRUModel  # Import from training file
-model = GRUModel(input_size=val_X.shape[2], hidden_size=128, num_layers=2, dropout=0.2)
+model = GRUModel(input_size=val_X.shape[2], output_size=val_y.shape[1], hidden_size=128, num_layers=2, dropout=0.2)
 model.load_state_dict(torch.load("gru_model.pth", map_location=device, weights_only=False))
 model.to(device)
 model.eval()
@@ -39,45 +40,55 @@ with torch.no_grad():
     for X_batch, y_batch in val_loader:
         X_batch = X_batch.to(device)
         out = model(X_batch)   # expected shape: (batch,) or (batch,1)
-        out = out.view(-1).cpu().numpy()
-        all_preds.append(out)
-        all_targets.append(y_batch.cpu().numpy().flatten())
+        all_preds.append(out.cpu().numpy())
+        all_targets.append(y_batch.cpu().numpy())
 
 all_preds = np.concatenate(all_preds)
 all_targets = np.concatenate(all_targets)
 
-# === Denormalize predictions and targets to original scale ===
-preds_denorm   = all_preds * std_y.item() + mean_y.item()
-targets_denorm = all_targets * std_y.item() + mean_y.item()
+# Concatenate all batches
+preds_norm   = all_preds * std_y.item() + mean_y.item()
+targets_norm = all_targets * std_y.item() + mean_y.item()
+print(f"Predictions shape: {preds_norm.shape}")
+print(f"Targets shape: {targets_norm.shape}")
 
-# === Metrics ===
-mse  = mean_squared_error(targets_denorm, preds_denorm)
-rmse = np.sqrt(mse)
-mae  = mean_absolute_error(targets_denorm, preds_denorm)
-r2   = r2_score(targets_denorm, preds_denorm)
+# Denormalize ALL features
+preds_denorm = preds_norm * std_vals + mean_vals
+targets_denorm = targets_norm * std_vals + mean_vals
 
-print("\n=== Validation Metrics ===")
-print(f"RMSE:  {rmse:.6f}")
-print(f"MSE:   {mse:.6f}")
-print(f"MAE:   {mae:.6f}")
-print(f"R²:    {r2:.6f}")
 
-# Residuals and ranges
-residuals = targets_denorm - preds_denorm
-print(f"\nMean Residual: {residuals.mean():.6f}")
-print(f"Std Residual:  {residuals.std():.6f}")
+# Compute metrics PER FEATURE (like the competition does)
+print("\n=== Validation Metrics (Per Feature) ===")
+feature_r2_scores = []
 
-print("\n=== Prediction Statistics ===")
-print(f"Target range:     [{targets_denorm.min():.4f}, {targets_denorm.max():.4f}]")
-print(f"Prediction range: [{preds_denorm.min():.4f}, {preds_denorm.max():.4f}]")
+for i in range(targets_denorm.shape[1]):
+    r2 = r2_score(targets_denorm[:, i], preds_denorm[:, i])
+    feature_r2_scores.append(r2)
+    if i < 5 or i >= 30:  # Print first 5 and last 2
+        print(f"Feature {i:2d} - R²: {r2:.6f}")
 
-print("\n=== Sample Predictions (first 10) ===")
-print("Target     | Prediction | Error")
-print("-" * 40)
-for i in range(min(10, len(targets_denorm))):
-    t = targets_denorm[i]
-    p = preds_denorm[i]
-    print(f"{t:9.4f} | {p:10.4f} | {t-p:6.4f}")
+# Overall metrics (like competition scoring)
+mean_r2 = np.mean(feature_r2_scores)
+print(f"\n{'='*40}")
+print(f"MEAN R² (Competition Score): {mean_r2:.6f}")
+print(f"{'='*40}")
+
+# Additional metrics
+all_preds_flat = preds_denorm.flatten()
+all_targets_flat = targets_denorm.flatten()
+
+rmse = np.sqrt(mean_squared_error(all_targets_flat, all_preds_flat))
+mae = mean_absolute_error(all_targets_flat, all_preds_flat)
+
+print(f"\nOverall RMSE: {rmse:.6f}")
+print(f"Overall MAE:  {mae:.6f}")
+
+# Show feature 0 specifically (for comparison with old model)
+print(f"\n=== Feature 0 (Previously Only Predicted) ===")
+r2_feat0 = r2_score(targets_denorm[:, 0], preds_denorm[:, 0])
+rmse_feat0 = np.sqrt(mean_squared_error(targets_denorm[:, 0], preds_denorm[:, 0]))
+print(f"Feature 0 R²:   {r2_feat0:.6f}")
+print(f"Feature 0 RMSE: {rmse_feat0:.6f}")
 
 print("\n=== Validation Complete ===")
-print(f"Key metric (R²): {r2:.6f}")
+print(f" Competition Score (Mean R²): {mean_r2:.6f}")
