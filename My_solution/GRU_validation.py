@@ -25,7 +25,7 @@ val_loader = DataLoader(val_ds, batch_size=128, shuffle=False)
 
 # Load model
 from GRU_model import GRUModel  # Import from training file
-model = GRUModel(input_size=val_X.shape[2], hidden_size=256, num_layers=3, dropout=0.2)
+model = GRUModel(input_size=val_X.shape[2], hidden_size=128, num_layers=2, dropout=0.2)
 model.load_state_dict(torch.load("gru_model.pth", map_location=device, weights_only=False))
 model.to(device)
 model.eval()
