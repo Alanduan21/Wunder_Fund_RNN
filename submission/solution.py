@@ -1,5 +1,5 @@
 import numpy as np
-from submission.utils import DataPoint
+from utils import DataPoint
 import torch
 from GRU_model_submission import GRUModel
 
@@ -11,21 +11,32 @@ class PredictionModel:
         self.std = scaler["std"].values.astype(np.float32)
 
         # Load model
-        input_size = len(self.mean)  # 32 features
-        self.model = GRUModel(input_size=input_size, hidden_size=128, num_layers=2, dropout=0.2)
+        input_size = len(self.mean)   # 32
+        output_size = len(self.mean)  # 32
+        self.model = GRUModel(
+            input_size=input_size, 
+            output_size=output_size, 
+            hidden_size=128, 
+            num_layers=2, 
+            dropout=0.2
+        )
         self.model.load_state_dict(torch.load("gru_model.pth", map_location="cpu", weights_only=False))
         self.model.eval()
 
         # Sequence buffer per seq_ix
         self.buffers = {}
-        self.seq_len = 100
+        self.seq_len = 50  # MATCH YOUR TRAINING!
         self.warmup_steps = 20
 
     def normalize(self, state: np.ndarray) -> np.ndarray:
-        return (state - self.mean) / self.std
+        # Ensure float32
+        normalized = (state.astype(np.float32) - self.mean) / self.std
+        return normalized.astype(np.float32)
 
-    def denormalize_target(self, value: float) -> float:
-        return value * self.std[0] + self.mean[0]
+    def denormalize(self, values: np.ndarray) -> np.ndarray:
+        # Denormalize ALL 32 features
+        denormalized = values.astype(np.float32) * self.std + self.mean
+        return denormalized.astype(np.float32)
 
     def predict(self, data_point: DataPoint) -> np.ndarray | None:
         if not data_point.need_prediction:
@@ -35,37 +46,41 @@ class PredictionModel:
         if seq_id not in self.buffers:
             self.buffers[seq_id] = []
         
-        # Add normalized state to buffer
-        self.buffers[seq_id].append(self.normalize(data_point.state))
+        # Add normalized state to buffer (ensure float32)
+        normalized_state = self.normalize(data_point.state)
+        self.buffers[seq_id].append(normalized_state)
+        
         if len(self.buffers[seq_id]) > self.seq_len:
             self.buffers[seq_id] = self.buffers[seq_id][-self.seq_len:]
 
         # WARM-UP: Use simple baseline for first few predictions
         if len(self.buffers[seq_id]) < self.warmup_steps:
             # Return current state unchanged (predict no change)
-            return np.copy(data_point.state)
+            return data_point.state.astype(np.float32)
 
-        # After warm-up, use model with padding if needed
+        # After warm-up, use model
         current_buffer = self.buffers[seq_id]
         
+        # Pad if needed
         if len(current_buffer) < self.seq_len:
-            # Pad by repeating first observation
             padding_needed = self.seq_len - len(current_buffer)
             first_obs = current_buffer[0]
-            padding = np.tile(first_obs, (padding_needed, 1))
+            padding = np.tile(first_obs, (padding_needed, 1)).astype(np.float32)
             seq_array = np.vstack([padding, np.array(current_buffer, dtype=np.float32)])
         else:
             seq_array = np.array(current_buffer, dtype=np.float32)
         
-        seq_array = np.expand_dims(seq_array, axis=0)  # (1, seq_len, features)
+        # Ensure float32 for torch
+        seq_array = seq_array.astype(np.float32)
+        seq_array = np.expand_dims(seq_array, axis=0)  # (1, seq_len, 32)
         seq_tensor = torch.from_numpy(seq_array)
 
-        # Predict target feature
+        # Predict ALL 32 features
         with torch.no_grad():
-            out = self.model(seq_tensor).item()
+            predictions_norm = self.model(seq_tensor)  # Shape: (1, 32)
+            predictions_norm = predictions_norm.squeeze(0).numpy()  # Shape: (32,)
 
-        # Build full prediction vector
-        prediction = np.copy(data_point.state)
-        prediction[0] = self.denormalize_target(out)
+        # Denormalize ALL 32 features
+        prediction = self.denormalize(predictions_norm)
 
-        return prediction
+        return prediction.astype(np.float32)
