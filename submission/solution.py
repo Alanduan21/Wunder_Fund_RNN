@@ -3,6 +3,8 @@ from utils import DataPoint
 import torch
 from GRU_model_submission import GRUModel
 
+# pass PENDING and CHECK 10:09PM 30/11/2025
+
 class PredictionModel:
     def __init__(self):
         # Load scaler
