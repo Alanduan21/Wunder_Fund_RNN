@@ -22,7 +22,7 @@ print(f"Target mean: {mean_vals[0]:.6f}, std: {std_vals[0]:.6f}")
 
 # load validation data
 val_ds = TensorDataset(val_X, val_y)
-val_loader = DataLoader(val_ds, batch_size=512, shuffle=False)
+val_loader = DataLoader(val_ds, batch_size=2048, shuffle=False)
 
 # Load model
 from GRU_model import GRUModel  # Import from training file

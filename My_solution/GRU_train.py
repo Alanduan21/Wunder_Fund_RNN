@@ -44,8 +44,8 @@ if __name__ == "__main__":
     # Create DataLoaders with LARGER batches for CPU efficiency
     train_ds = TensorDataset(train_X, train_y)
     val_ds = TensorDataset(val_X, val_y)
-    train_loader = DataLoader(train_ds, batch_size=512, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=512, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=2048, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=2048, shuffle=False)
 
 
     ###########################################################################
