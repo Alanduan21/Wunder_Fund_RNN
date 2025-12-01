@@ -1,0 +1,76 @@
+import numpy as np
+from utils import DataPoint
+import torch
+from GRU_model_submission import GRUModel
+
+class PredictionModel:
+    def __init__(self):
+        # Load scaler
+        scaler = torch.load("scaler.pt", weights_only=False)
+        self.mean = scaler["mean"].values.astype(np.float32)
+        self.std = scaler["std"].values.astype(np.float32)
+
+        # Load model
+        input_size = len(self.mean)   # 32
+        output_size = len(self.mean)  # 32
+        self.model = GRUModel(
+            input_size=input_size, 
+            output_size=output_size, 
+            hidden_size=128, 
+            num_layers=2, 
+            dropout=0.2
+        )
+        self.model.load_state_dict(torch.load("gru_model.pth", map_location="cpu", weights_only=False))
+        self.model.eval()
+
+        # Sequence buffer per seq_ix
+        self.buffers = {}
+        self.seq_len = 50
+
+    def normalize(self, state: np.ndarray) -> np.ndarray:
+        normalized = (state.astype(np.float32) - self.mean) / self.std
+        return normalized.astype(np.float32)
+
+    def denormalize(self, values: np.ndarray) -> np.ndarray:
+        denormalized = values.astype(np.float32) * self.std + self.mean
+        return denormalized.astype(np.float32)
+
+    def predict(self, data_point: DataPoint) -> np.ndarray | None:
+        if not data_point.need_prediction:
+            return None
+        
+        seq_id = data_point.seq_ix
+        if seq_id not in self.buffers:
+            self.buffers[seq_id] = []
+        
+        # Add normalized state to buffer
+        normalized_state = self.normalize(data_point.state)
+        self.buffers[seq_id].append(normalized_state)
+        
+        if len(self.buffers[seq_id]) > self.seq_len:
+            self.buffers[seq_id] = self.buffers[seq_id][-self.seq_len:]
+
+        # Use model from step 1 (no warm-up!)
+        current_buffer = self.buffers[seq_id]
+        
+        # Zero padding (better for short sequences)
+        if len(current_buffer) < self.seq_len:
+            padding_needed = self.seq_len - len(current_buffer)
+            padding = np.zeros((padding_needed, len(self.mean)), dtype=np.float32)
+            seq_array = np.vstack([padding, np.array(current_buffer, dtype=np.float32)])
+        else:
+            seq_array = np.array(current_buffer, dtype=np.float32)
+        
+        seq_array = seq_array.astype(np.float32)
+        seq_array = np.expand_dims(seq_array, axis=0)  # (1, seq_len, 32)
+        seq_tensor = torch.from_numpy(seq_array)
+
+        # Predict ALL 32 features
+        with torch.no_grad():
+            predictions_norm = self.model(seq_tensor)
+            predictions_norm = predictions_norm.squeeze(0).numpy()
+
+        # Denormalize ALL 32 features
+        prediction = self.denormalize(predictions_norm)
+
+        return prediction.astype(np.float32)
