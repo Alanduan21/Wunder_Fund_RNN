@@ -2,9 +2,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+
 # Lightweight model for CPU
 class GRUModel(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size=128, num_layers=2, dropout=0.2):
+    def __init__(self, input_size, output_size, hidden_size=512, num_layers=4, dropout=0.3):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_size, 
@@ -39,8 +44,8 @@ if __name__ == "__main__":
     # Create DataLoaders with LARGER batches for CPU efficiency
     train_ds = TensorDataset(train_X, train_y)
     val_ds = TensorDataset(val_X, val_y)
-    train_loader = DataLoader(train_ds, batch_size=256, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=256, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=512, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=512, shuffle=False)
 
 
     ###########################################################################
@@ -51,21 +56,23 @@ if __name__ == "__main__":
     model = GRUModel(
         input_size=input_size, 
         output_size=output_size,
-        hidden_size=128, 
-        num_layers=2, 
-        dropout=0.2
-    )
+        hidden_size=512, 
+        num_layers=4, 
+        dropout=0.3
+    ).to(device)
 
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-6)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=3, verbose=True)
 
     print(f"Model has {sum(p.numel() for p in model.parameters()):,} parameters")
-    print(f"Config: input={input_size}, output={output_size}, hidden=128, layers=2")
+    print(f"Config: input={input_size}, output={output_size}, hidden=512, layers=4")
+    
 
     print("\n=== Training Begins ===")
     best_val_loss = float('inf')
-    epochs = 20
-    patience = 5
+    epochs = 40
+    patience = 8
     epochs_no_improve = 0
     
     import time
@@ -78,6 +85,7 @@ if __name__ == "__main__":
         train_loss = 0.0
         
         for X_batch, y_batch in train_loader:
+            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
             optimizer.zero_grad()
             preds = model(X_batch)
             loss = criterion(preds, y_batch)
@@ -96,6 +104,7 @@ if __name__ == "__main__":
         
         with torch.no_grad():
             for X_batch, y_batch in val_loader:
+                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
                 preds = model(X_batch)
                 loss = criterion(preds, y_batch)
                 val_loss += loss.item() * X_batch.size(0)
@@ -110,7 +119,8 @@ if __name__ == "__main__":
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             epochs_no_improve = 0
-            torch.save(model.state_dict(), "gru_model.pth")
+            torch.save(model.cpu().state_dict(), "gru_model.pth")
+            model.to(device)
             print(f"  ✓ Best model saved!")
         else:
             epochs_no_improve += 1

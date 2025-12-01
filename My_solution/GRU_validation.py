@@ -4,7 +4,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("=== Loading Validation Data ===")
 # Load data (already normalized from dataSplit.py)
@@ -22,11 +22,11 @@ print(f"Target mean: {mean_vals[0]:.6f}, std: {std_vals[0]:.6f}")
 
 # load validation data
 val_ds = TensorDataset(val_X, val_y)
-val_loader = DataLoader(val_ds, batch_size=256, shuffle=False)
+val_loader = DataLoader(val_ds, batch_size=512, shuffle=False)
 
 # Load model
 from GRU_model import GRUModel  # Import from training file
-model = GRUModel(input_size=val_X.shape[2], output_size=val_y.shape[1], hidden_size=128, num_layers=2, dropout=0.2)
+model = GRUModel(input_size=val_X.shape[2], output_size=val_y.shape[1], hidden_size=512, num_layers=4, dropout=0.3)
 model.load_state_dict(torch.load("gru_model.pth", map_location=device, weights_only=False))
 model.to(device)
 model.eval()
@@ -38,7 +38,7 @@ all_preds = []
 all_targets = []
 with torch.no_grad():
     for X_batch, y_batch in val_loader:
-        X_batch = X_batch.to(device)
+        X_batch, y_batch = X_batch.to(device), y_batch.to(device)
         out = model(X_batch)   # expected shape: (batch,) or (batch,1)
         all_preds.append(out.cpu().numpy())
         all_targets.append(y_batch.cpu().numpy())
