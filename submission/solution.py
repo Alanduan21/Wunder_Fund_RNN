@@ -16,9 +16,9 @@ class PredictionModel:
         self.model = GRUModel(
             input_size=input_size, 
             output_size=output_size, 
-            hidden_size=256, 
+            hidden_size=192, 
             num_layers=2, 
-            dropout=0.15
+            dropout=0.12
         )
         self.model.load_state_dict(torch.load("gru_model.pth", map_location="cpu", weights_only=False))
         self.model.eval()
