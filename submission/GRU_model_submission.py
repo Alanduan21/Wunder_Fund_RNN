@@ -6,7 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 # Model class
 
 class GRUModel(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size=256, num_layers=2, dropout=0.15):
+    def __init__(self, input_size, output_size, hidden_size=192, num_layers=2, dropout=0.12):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_size, 
