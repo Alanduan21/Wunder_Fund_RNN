@@ -1,5 +1,5 @@
 import numpy as np
-from utils import DataPoint
+from submission.utils import DataPoint
 import torch
 from GRU_model_submission import GRUModel
 
@@ -16,9 +16,9 @@ class PredictionModel:
         self.model = GRUModel(
             input_size=input_size, 
             output_size=output_size, 
-            hidden_size=128, 
+            hidden_size=256, 
             num_layers=2, 
-            dropout=0.2
+            dropout=0.15
         )
         self.model.load_state_dict(torch.load("gru_model.pth", map_location="cpu", weights_only=False))
         self.model.eval()
